@@ -104,6 +104,12 @@ def parse_arguments():
         help="Enable verbose logging"
     )
 
+    parser.add_argument(
+        "--show-watermark-info",
+        action="store_true",
+        help="Display detailed watermark information during processing"
+    )
+
     return parser.parse_args()
 
 
@@ -129,7 +135,7 @@ def main():
     )
 
     # Process images
-    processor = WatermarkProcessor(config, logger)
+    processor = WatermarkProcessor(config, logger, args.show_watermark_info)
 
     try:
         if input_path.is_file():

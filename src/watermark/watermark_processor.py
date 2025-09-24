@@ -22,10 +22,12 @@ from src.utils.config import WatermarkConfig
 class WatermarkProcessor:
     """Main class for processing watermarks on images"""
 
-    def __init__(self, config: WatermarkConfig, logger: Optional[logging.Logger] = None):
+    def __init__(self, config: WatermarkConfig, logger: Optional[logging.Logger] = None,
+                 show_watermark_info: bool = False):
         self.config = config
         self.logger = logger or logging.getLogger(__name__)
         self.exif_reader = ExifReader(logger)
+        self.show_watermark_info = show_watermark_info
 
         if Image is None:
             raise ImportError("Pillow library is required for image processing")
@@ -47,6 +49,10 @@ class WatermarkProcessor:
             if not self._is_supported_image_format(image_path):
                 self.logger.warning(f"Unsupported image format: {image_path.name}")
                 return False
+
+            # Get timestamp information for display (if showing watermark info)
+            if self.show_watermark_info:
+                self._current_timestamp_info = self.exif_reader.get_original_timestamp(image_path)
 
             # Get date from EXIF
             date_str = self.exif_reader.get_date_taken(image_path)
@@ -148,6 +154,7 @@ class WatermarkProcessor:
 
         # Try to load a font
         font = self._get_font()
+        font_info = self._get_font_info(font)
 
         # Get text size
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -158,6 +165,10 @@ class WatermarkProcessor:
         position = self._calculate_text_position(
             image.size, (text_width, text_height)
         )
+
+        # Print watermark information
+        if self.show_watermark_info:
+            self._print_watermark_info(image, text, font_info, position, (text_width, text_height))
 
         # Draw text with outline for better visibility
         outline_color = "black" if self.config.color.lower() != "black" else "white"
@@ -207,6 +218,98 @@ class WatermarkProcessor:
         except Exception as e:
             self.logger.warning(f"Could not load custom font: {e}")
             return ImageFont.load_default()
+
+    def _get_font_info(self, font) -> dict:
+        """
+        Get font information
+
+        Args:
+            font: PIL Font object
+
+        Returns:
+            Dictionary containing font information
+        """
+        font_info = {
+            "type": type(font).__name__,
+            "size": self.config.font_size,
+            "path": "default"
+        }
+
+        try:
+            if hasattr(font, 'path'):
+                font_info["path"] = font.path
+            elif hasattr(font, 'font'):
+                if hasattr(font.font, 'family'):
+                    font_info["path"] = font.font.family
+        except Exception:
+            pass
+
+        return font_info
+
+    def _print_watermark_info(self, image: Image.Image, text: str, font_info: dict,
+                            position: tuple, text_size: tuple):
+        """
+        Print detailed watermark information
+
+        Args:
+            image: PIL Image object
+            text: Watermark text
+            font_info: Font information dictionary
+            position: Text position (x, y)
+            text_size: Text size (width, height)
+        """
+        self.logger.info("=" * 60)
+        self.logger.info("Watermark Details")
+        self.logger.info("=" * 60)
+
+        # Image information
+        self.logger.info(f"Image Info:")
+        self.logger.info(f"   Size: {image.size[0]}x{image.size[1]} pixels")
+        self.logger.info(f"   Mode: {image.mode}")
+
+        # Original timestamp information
+        if hasattr(self, '_current_timestamp_info') and self._current_timestamp_info:
+            timestamp_info = self._current_timestamp_info
+            self.logger.info(f"Original Photo Timestamps:")
+            self.logger.info(f"   EXIF Data Found: {timestamp_info.get('exif_found', 'No')}")
+            if timestamp_info.get('exif_found'):
+                self.logger.info(f"   Data Source: {timestamp_info.get('source', 'Unknown')}")
+                if timestamp_info.get('datetime_original'):
+                    self.logger.info(f"   Original Shot Time: {timestamp_info['datetime_original']}")
+                if timestamp_info.get('datetime_digitized'):
+                    self.logger.info(f"   Digitized Time: {timestamp_info['datetime_digitized']}")
+                if timestamp_info.get('datetime_modified'):
+                    self.logger.info(f"   Modified Time: {timestamp_info['datetime_modified']}")
+            self.logger.info(f"   File Modification: {timestamp_info.get('file_modification_time', 'Unknown')}")
+
+        # Watermark text information
+        self.logger.info(f"Watermark Text:")
+        self.logger.info(f"   Content: '{text}'")
+        self.logger.info(f"   Length: {len(text)} characters")
+
+        # Font information
+        self.logger.info(f"Font Info:")
+        self.logger.info(f"   Size: {font_info['size']}px")
+        self.logger.info(f"   Type: {font_info['type']}")
+        self.logger.info(f"   Path: {font_info['path']}")
+
+        # Position information
+        self.logger.info(f"Position Info:")
+        self.logger.info(f"   Config Position: {self.config.position}")
+        self.logger.info(f"   Actual Coordinates: ({position[0]}, {position[1]})")
+        self.logger.info(f"   Text Size: {text_size[0]}x{text_size[1]} pixels")
+
+        # Color information
+        self.logger.info(f"Color Info:")
+        self.logger.info(f"   Main Color: {self.config.color}")
+        outline_color = "black" if self.config.color.lower() != "black" else "white"
+        self.logger.info(f"   Outline Color: {outline_color}")
+
+        # Output settings
+        self.logger.info(f"Output Settings:")
+        self.logger.info(f"   Output Quality: {self.config.output_quality}%")
+
+        self.logger.info("=" * 60)
 
     def _calculate_text_position(self, image_size: Tuple[int, int],
                                text_size: Tuple[int, int]) -> Tuple[int, int]:

@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir -p src/watermark src/utils src/exif_reader)"
+      "Bash(mkdir -p src/watermark src/utils src/exif_reader)",
+      "Bash(python -c \"\nfrom PIL import Image\nfrom PIL.ExifTags import TAGS\nfrom pathlib import Path\nimport piexif\n\nimage_path = Path(''samples/test_photo_with_exif.jpg'')\nprint(''=== 详细EXIF验证 ==='')\n\ntry:\n    with Image.open(image_path) as img:\n        exifdata = img.getexif()\n        print(f''PIL EXIF条目数: {len(exifdata)}'')\n        \n        if exifdata:\n            print(''\\nPIL读取的EXIF标签:'')\n            for tag_id, value in exifdata.items():\n                tag_name = TAGS.get(tag_id, f''Tag{tag_id}'')\n                print(f''  {tag_id:5d} | {tag_name:25s} | {str(value)[:60]}'')\n        \n        # 使用piexif读取\n        try:\n            exif_dict = piexif.load(str(image_path))\n            print(''\\nPIEXIF读取的EXIF数据:'')\n            \n            for ifd_name in [''0th'', ''Exif'', ''GPS'', ''1st'']:\n                if ifd_name in exif_dict and exif_dict[ifd_name]:\n                    print(f''\\n{ifd_name} IFD:'')\n                    for tag, value in exif_dict[ifd_name].items():\n                        try:\n                            tag_name = piexif.TAGS[ifd_name][tag][''name'']\n                            print(f''  {tag:5d} | {tag_name:25s} | {str(value)[:60]}'')\n                        except:\n                            print(f''  {tag:5d} | Unknown | {str(value)[:60]}'')\n                            \n        except Exception as e:\n            print(f''PIEXIF读取错误: {e}'')\n            \nexcept Exception as e:\n    print(f''错误: {e}'')\n\")"
     ],
     "deny": [],
     "ask": []
