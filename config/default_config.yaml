@@ -1,0 +1,17 @@
+# Default watermark configuration
+font_size: 36
+color: "white"
+position: "bottom-right"
+output_quality: 95
+
+# Supported positions:
+# - top-left
+# - top-right
+# - bottom-left
+# - bottom-right
+# - center
+
+# Supported colors:
+# - Named colors: white, black, red, blue, green, yellow, etc.
+# - Hex colors: #FFFFFF, #000000, etc.
+# - RGB tuples: (255, 255, 255)
