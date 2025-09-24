@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p src/watermark src/utils src/exif_reader)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
